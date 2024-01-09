@@ -4,6 +4,7 @@
 package ClientInterface;
 
 import Contract.CFile;
+import Contract.CSAuthenticator;
 import Contract.Factorization;
 import Contract.Fibonacci;
 import Contract.PerfectNumber;
@@ -12,7 +13,9 @@ import java.net.*;
 import java.io.*;
 
 /**
- * The ClientInterface class represents a client application for interacting with a server to perform compute tasks.
+ * The ClientInterface class represents a client application for interacting
+ * with a server to perform compute tasks.
+ *
  * @author Kasun Eranda - 12216898
  */
 public class ClientInterface {
@@ -29,9 +32,14 @@ public class ClientInterface {
     // Input and output streams
     private static ObjectInputStream in = null;
     private static ObjectOutputStream out = null;
+    private static boolean isAuthenticated = false;
+    
+    private static CSAuthenticator authenticator = CSAuthenticator.getInstance();
 
     /**
-     * The main method that initializes the UI and sets up listeners for various actions.
+     * The main method that initializes the UI and sets up listeners for various
+     * actions.
+     *
      * @param args The command line arguments.
      */
     public static void main(String[] args) {
@@ -45,6 +53,13 @@ public class ClientInterface {
         UI.clrBrdBtn.addActionListener(e -> UI.ta.setText(null));
         UI.offLdTskBtn.addActionListener(e -> {
             initializeTask(UI.cb.getSelectedIndex());
+        });
+        UI.authBtn.addActionListener(e -> {
+            UI.message("The mutual connection is progressing!");
+            isAuthenticated = true;
+            UI.enableButton(true);
+            isAuthenticated = authenticator.authenticate(UI.username.getText());
+            UI.message(authenticator.log());
         });
     }
 
@@ -68,13 +83,14 @@ public class ClientInterface {
     }
 
     /**
-     * Establishes a connection with the server using the specified host and port.
+     * Establishes a connection with the server using the specified host and
+     * port.
      */
     private static void connect() {
         try {
             // Get host and port details from UI
-            String host = UI.t1.getText();
-            int port = UI.t2.getText().isEmpty() ? DEFAULT_PORT : Integer.parseInt(UI.t2.getText());
+            String host = UI.host.getText();
+            int port = UI.port.getText().isEmpty() ? DEFAULT_PORT : Integer.parseInt(UI.port.getText());
             socket = new Socket(host, port);
 
             // If connected, enable UI buttons and set up streams
@@ -90,6 +106,7 @@ public class ClientInterface {
 
     /**
      * Uploads a class file to the server based on the selected task.
+     *
      * @param index The index representing the selected task.
      */
     private static void uploadFile(int index) {
@@ -129,9 +146,12 @@ public class ClientInterface {
     }
 
     /**
-     * Initializes and sends a compute task to the server based on the selected task.
+     * Initializes and sends a compute task to the server based on the selected
+     * task.
+     *
      * @param index The index representing the selected task.
-     * @throws ClassNotFoundException If the class of the serialized object could not be found.
+     * @throws ClassNotFoundException If the class of the serialized object
+     * could not be found.
      */
     private static void initializeTask(int index) {
         // Reconnect to the server before initializing a task
@@ -164,6 +184,7 @@ public class ClientInterface {
 
     /**
      * Creates a task object based on the selected task index.
+     *
      * @param index The index representing the selected task.
      * @return The task object.
      */
@@ -200,6 +221,7 @@ public class ClientInterface {
 
     /**
      * Handles exceptions by logging the message and the exception details.
+     *
      * @param message The error message.
      * @param e The exception.
      */
@@ -210,6 +232,7 @@ public class ClientInterface {
 
     /**
      * Handles server-specific exceptions.
+     *
      * @param exception The server exception.
      */
     private static void handleServerException(Exception exception) {
@@ -219,4 +242,23 @@ public class ClientInterface {
 
         }
     }
+
+    /**
+     * Retrieves the authentication status of the client.
+     *
+     * @return true if the client is authenticated, false otherwise.
+     */
+    public static boolean isIsAuthenticated() {
+        return isAuthenticated;
+    }
+
+    /**
+     * Sets the authentication status of the client.
+     *
+     * @param isAuthenticated the new authentication status to be set.
+     */
+    public static void setIsAuthenticated(boolean isAuthenticated) {
+        ClientInterface.isAuthenticated = isAuthenticated;
+    }
+
 }

@@ -4,15 +4,7 @@
  */
 package ClientInterface;
 
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.WindowConstants;
+import javax.swing.*;
 
 /**
  * UI class represents the graphical user interface for the client application.
@@ -35,8 +27,8 @@ public class UI {
     // Components for UI
     public static JTextArea ta;
     public static JFrame f = new JFrame(); // Creating an instance of JFrame
-    public static JButton upldBtn, setBtn, clrBrdBtn, offLdTskBtn;
-    public static JTextField t1, t2;
+    public static JButton upldBtn, setBtn, clrBrdBtn, offLdTskBtn, authBtn;
+    public static JTextField host, port, username;
     public static JComboBox cb;
 
     /**
@@ -47,29 +39,32 @@ public class UI {
         f.setSize(1000, 700); // Set the frame size (400 width and 500 height)
 
         // Set up Buttons
-        setBtn = createButton("SET", 700, 10);
-        clrBrdBtn = createButton("Clear Board", 850, 10);
-        upldBtn = createButton("Upload", 700, 60);
-        offLdTskBtn = createButton("OffLoadTask", 850, 60);
+        setBtn = createButton("SET", 500, 60);
+        authBtn = createButton("authenticate", setBtn.getX() + 150, 60);
+        clrBrdBtn = createButton("Clear Board", authBtn.getX() + 150, 60);
+        upldBtn = createButton("Upload", authBtn.getX(), 120);
+        offLdTskBtn = createButton("OffLoadTask", clrBrdBtn.getX(), 120);
 
         // Set up Combo box
         String taskList[] = {"Generate Fibonacci sequence", "Search Perfect Number", "Factorise number"};
-        cb = createComboBox(taskList, 100, 60);
+        cb = createComboBox(taskList, 120, 120);
 
         enableButton(false);
 
         // Set up Labels
         createLabel("Server host", 10, 10);
-        createLabel("Server port", LBL_WIDTH + 200, 10);
-        createLabel("Task List", 10, 60);
-        createLabel("Results Board", 500, 110);
+        createLabel("Username", 500, 10);
+        createLabel("Server port", 10, 60);
+        createLabel("Task List", 10, 120);
+        createLabel("Results Board", setBtn.getX() - 50, 200);
 
         // Set up Text fields
-        t1 = createTextField((10 + LBL_WIDTH + 10), 10);
-        t2 = createTextField(t1.getX() + TXT_WIDTH + 200, 10);
+        host = createTextField((10 + LBL_WIDTH + 10), 10);
+        port = createTextField(host.getX(), 60);
+        username = createTextField(host.getX() + 500, 10);
 
         // Set up Textarea
-        ta = createTextArea(10, 160);
+        ta = createTextArea(10, 300);
 
         f.setLayout(null); // Using no layout managers
         f.setVisible(true); // Making the frame visible
@@ -157,16 +152,27 @@ public class UI {
      * @param enabled True to enable buttons, false to disable.
      */
     public static void enableButton(boolean enabled) {
-        clrBrdBtn.setEnabled(enabled);
-        upldBtn.setEnabled(enabled);
-        offLdTskBtn.setEnabled(enabled);
-        setBtn.setEnabled(!enabled);
-        if (enabled) {
-            cb.setSelectedIndex(0);
+
+        if (ClientInterface.isIsAuthenticated()) {
+            clrBrdBtn.setEnabled(enabled);
+            upldBtn.setEnabled(enabled);
+            offLdTskBtn.setEnabled(enabled);
+            if (enabled) {
+                cb.setSelectedIndex(0);
+            } else {
+                cb.setSelectedIndex(-1);
+            }
+            cb.setEnabled(enabled);
+            authBtn.setEnabled(!enabled);
         } else {
-            cb.setSelectedIndex(-1);
+            clrBrdBtn.setEnabled(false);
+            upldBtn.setEnabled(false);
+            offLdTskBtn.setEnabled(false);
+            cb.setEnabled(false);
+            authBtn.setEnabled(true);
         }
-        cb.setEnabled(enabled);
+        setBtn.setEnabled(!enabled);
+
     }
 
     /**
