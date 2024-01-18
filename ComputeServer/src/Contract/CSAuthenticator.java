@@ -27,7 +27,7 @@ public class CSAuthenticator implements Serializable {
     private String CipherUserName;
 
     // Verification string used for authentication
-    private static String VerificationString;
+    private String VerificationString;
 
     // Session key for secure communication
     private String SessionKey;
@@ -48,7 +48,6 @@ public class CSAuthenticator implements Serializable {
     public static CSAuthenticator getInstance() {
         if (authtenticator == null) {
             authtenticator = new CSAuthenticator();
-            VerificationString = getBase64String(DEFAULT_KEY_LENGTH);
             return authtenticator;
         }
         return authtenticator;
@@ -118,35 +117,18 @@ public class CSAuthenticator implements Serializable {
     }
 
     /**
-     * Generates a random base64 string of the specified length.
-     *
-     * @param string_length The length of the base64 string to generate
-     * @return The generated base64 string
-     */
-    private static String getBase64String(int string_length) {
-        // The character pool to generate a random alpha-numeric string 
-        String AlphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                + "0123456789"
-                + "abcdefghijklmnopqrstuvxyz"
-                + "+/";
-        StringBuilder sb = new StringBuilder(string_length);
-        for (int i = 0; i < string_length; i++) {
-            int index = (int) (AlphaNumericString.length() * Math.random());
-            sb.append(AlphaNumericString.charAt(index));
-        }
-        return sb.toString();
-    }
-
-    /**
      * Authenticates the user with the provided username. Sets the plain text
      * username and retrieves the verification string.
      *
      * @param username The username to authenticate
      * @return True if authentication is successful, false otherwise
      */
-    public boolean authenticate(String username) {
-        this.PlainStringUserName = username;
-        this.authtenticator.getVerificationString();
+    public boolean authenticate(String plainUserName, String cipherUserName, String verficationString, String sessionKey) {
+        this.PlainStringUserName = plainUserName;
+        this.CipherUserName = cipherUserName;
+        this.VerificationString = verficationString;
+        this.SessionKey = sessionKey;        
+
         return true;
     }
 
@@ -159,14 +141,16 @@ public class CSAuthenticator implements Serializable {
     public String log() {
         StringBuilder sb = new StringBuilder();
         sb.append("The verification string in plain text: ")
-                .append(getVerificationString()).append("\n")
-                .append("The verification string cipher text: ")
-                .append("VERIFICATION STRING CIPHER TEXT GOES HERE\n")
-                .append("The session key in cipher text: ")
-                .append("SESSION KEY CIPHER TEXT GOES HERE\n")
-                .append("The session key in plain text: ")
-                .append("PLAIN SESSION KEY GOES HERE\n")
-                .append("The mutual authentication is done");
+        .append(getVerificationString()).append("\n")
+        .append("The verification string cipher text: ")
+        .append(getVerificationString()).append("\n")
+                
+        .append("VERIFICATION STRING CIPHER TEXT GOES HERE\n")
+        .append("The session key in cipher text: ")
+        .append("SESSION KEY CIPHER TEXT GOES HERE\n")
+        .append("The session key in plain text: ")
+        .append("PLAIN SESSION KEY GOES HERE\n")
+        .append("The mutual authentication is done");
         return sb.toString();
     }
 
