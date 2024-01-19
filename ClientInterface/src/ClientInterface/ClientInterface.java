@@ -9,8 +9,13 @@ import Contract.Factorization;
 import Contract.Fibonacci;
 import Contract.PerfectNumber;
 import Contract.Task;
+import Security.SecurityUtil;
 import java.net.*;
 import java.io.*;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.util.HashMap;
+import javax.crypto.SecretKey;
 
 /**
  * The ClientInterface class represents a client application for interacting
@@ -35,6 +40,7 @@ public class ClientInterface {
     private static boolean isAuthenticated = false;
     
     private static CSAuthenticator authenticator = CSAuthenticator.getInstance();
+    static SecretKey sessionKey;
 
     /**
      * The main method that initializes the UI and sets up listeners for various
@@ -54,13 +60,12 @@ public class ClientInterface {
         UI.offLdTskBtn.addActionListener(e -> {
             initializeTask(UI.cb.getSelectedIndex());
         });
-        UI.authBtn.addActionListener(e -> {
-            UI.message("The mutual connection is progressing!");
-            isAuthenticated = true;
-            UI.enableButton(true);
-            isAuthenticated = authenticator.authenticate(UI.username.getText());
-            UI.message(authenticator.log());
-        });
+        UI.authBtn.addActionListener(e -> authenticateWithServer());
+        
+        // temp code
+        UI.username.setText("Stephen Smith");
+        UI.port.setText("8888");
+        UI.host.setText("localhost");
     }
 
     /**
@@ -133,7 +138,14 @@ public class ClientInterface {
                     byte[] byteArray = new byte[(int) file.length()];
                     dis.readFully(byteArray, 0, byteArray.length);
                     CFile cfile = new CFile(taskfile, byteArray);
-                    out.writeObject(cfile);
+                    
+                    // Encrypt file before send to the server
+                    String encriptedCFile = SecurityUtil.SymEncryptObj(cfile, sessionKey);
+                    
+                    // Log
+                    UI.message("The CFile encrypted String: " + encriptedCFile);
+                    
+                    out.writeObject(encriptedCFile);
                     out.flush();
                     UI.message("Uploading " + (cfile.getFname().split(BASE_CLASS_PATH)[1]) + " is done.");
                 }
@@ -159,17 +171,26 @@ public class ClientInterface {
         Object taskObject = createTaskObject(index);
 
         try {
+            // Encrypt task object before send to the server
+            String encriptedTaskString = SecurityUtil.SymEncryptObj(taskObject, sessionKey);
+                    
+            // Log
+            UI.message("The Task encrypted String: " + encriptedTaskString);
+            
             // Send the task to the server and receive the result
-            out.writeObject(taskObject);
+            out.writeObject(encriptedTaskString);
             out.flush();
 
             Object result = in.readObject();
 
+            // Descrypt received result task object by session key
+            Object decryptedResult = SecurityUtil.SymDecryptObj((String)result, sessionKey);
+            
             // Handle server response
-            if (result instanceof Exception) {
-                handleServerException((Exception) result);
+            if (decryptedResult instanceof Exception) {
+                handleServerException((Exception) decryptedResult);
             } else {
-                Task processedTask = (Task) result;
+                Task processedTask = (Task) decryptedResult;
                 UI.message("\n" + processedTask.getResult());
                 UI.message("-------------------------");
             }
@@ -261,4 +282,80 @@ public class ClientInterface {
         ClientInterface.isAuthenticated = isAuthenticated;
     }
 
+    private static void authenticateWithServer() {
+        UI.message("The mutual connection is progressing!");
+       
+        HashMap privateKeys = SecurityUtil.ReadinKeys("src/Security/StephenSmith-pri.ser");
+        HashMap publicKeys = SecurityUtil.ReadinKeys("src/Security/StephenSmith-pub.ser");
+        
+        String username = UI.username.getText();
+        
+        if(!username.isBlank()) {
+            // Encrypt username with Stephen Smith Private Key
+            String encryptedUserName = SecurityUtil.asyEncrypt(username, (PrivateKey)privateKeys.get("Stephen Smith"));
+            
+            // Generate random verification String
+            String verificationString = SecurityUtil.RandomAlphaNumericString(128);
+            
+            // Encrypt verification String with Centre PublicKey
+            String encryptedVerificationString = SecurityUtil.asyEncrypt(verificationString, (PublicKey)publicKeys.get("CENTRE"));
+            
+            isAuthenticated = authenticator.authenticate(username, encryptedUserName, encryptedVerificationString, null);
+            
+            UI.message("The verification string in plain text: " + verificationString);
+            UI.message("The verification string in cipher text: " + encryptedVerificationString);
+            
+            try {
+                // Send the task to the server and receive the result
+                out.writeObject(authenticator);
+                out.flush();
+
+                Object result = in.readObject();
+
+                // Handle server response
+                if (result instanceof Exception) {
+                    handleServerException((Exception) result);
+                } else {
+                    CSAuthenticator centreAuthObj = (CSAuthenticator) result;
+                    
+                    // Decrypt Centre ciphered username with Centre public key
+                    String decryptedUsername = SecurityUtil.asyDecrypt(centreAuthObj.getCipherUserName(), (PublicKey)publicKeys.get("CENTRE"));
+                    
+                    // Check Centre username matches ciphered username (Step 7)
+                    if(centreAuthObj.getPlainStringUserName().equals(decryptedUsername)) {
+
+                        // Decrypt Session Key with clients primary key (Step 6)
+                        SecretKey authSessionKey = SecurityUtil.DecryptSessionKey(centreAuthObj.getSessionKey(), (PrivateKey)privateKeys.get("Stephen Smith"));
+
+                        // Decrypt Centre verification string from sessionKey
+                        String centreVerificationString = (String)SecurityUtil.SymDecryptObj(centreAuthObj.getVerificationString(), authSessionKey);
+                    
+                        // Compare verification strings (Step 9)
+                        if (centreVerificationString.equals(authenticator.getVerificationString())) {
+                 
+                            // Client is authenticated with the server; Save the session key
+                            sessionKey = authSessionKey;
+                            
+                            // Logs
+                            UI.message("The session key in cipher text: " + centreAuthObj.getSessionKey());
+                            UI.message("The session key in plain text: " + SecurityUtil.keytoB64String(sessionKey));
+                            UI.message("The mutual authentication is done!");
+                            
+                            // Enable UI buttons
+                            UI.enableButton(true);
+                            
+                        } else {
+                            System.out.println("Error: Verification strings are not matching");
+                        }
+                    } else {
+                        System.out.println("Error: Usernames are not matching");
+                    }
+                }
+            } catch (IOException | ClassNotFoundException e) {
+                handleException("Error during task initialization:", e);
+            } finally {
+                closeSocket();
+            }
+        }
+    }
 }
